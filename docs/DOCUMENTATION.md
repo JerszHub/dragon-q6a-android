@@ -122,4 +122,7 @@ This port is an integration of existing open-source projects plus binary vendor 
 
 **Trademark note:** "Android" is a trademark of Google LLC. An uncertified build must not be
 marketed as simply "Android" — call it an *unofficial AOSP 13 port*. Do not ship Google apps
-(GMS/Play) — they are not licensed for redistribution. This image contains none.
+(GMS/Play) — they are not licensed for redistribution. **This image contains none.** Users who
+want Google apps can flash [MindTheGapps](https://github.com/MindTheGapps) themselves for private
+use via the bundled TWRP recovery — see
+[FLASHING.md → *Adding Google Apps*](FLASHING.md#adding-google-apps-play-store--gms-via-twrp).

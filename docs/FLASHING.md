@@ -162,15 +162,20 @@ yourself for private use. This build is prepared for it: dm-verity is disabled, 
 
 ### 1. Enter TWRP recovery
 
-The bootloader auto-boots Android, so trigger recovery from a running system:
+The bootloader auto-boots Android, so trigger recovery from the running system. **No PC
+needed** — the image ships a one-tap app:
 
-```bash
-adb connect <device-ip>:5555     # adb-over-TCP is enabled from boot (port 5555)
-adb reboot recovery
-```
+- **Easiest — on the device:** open the **"Reboot to Recovery"** app (bundled). It
+  reboots straight into TWRP.
+- **From a PC over adb** (adb-over-TCP is enabled from boot on port 5555):
 
-The board reboots into TWRP (one-shot via the boot-control block). Plug in the USB
-stick + keyboard/mouse.
+  ```bash
+  adb connect <device-ip>:5555
+  adb reboot recovery
+  ```
+
+Either way the board reboots into TWRP (one-shot via the boot-control block). Plug in
+the USB stick + keyboard/mouse.
 
 ### 2. Flash MindTheGapps
 
