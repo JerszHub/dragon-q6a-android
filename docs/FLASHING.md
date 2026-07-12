@@ -223,15 +223,25 @@ panels, selectable by editing the ESP (FAT) partition on any PC:
 - **10FHD** — Radxa 10" FHD (`display-10fhd-ad003`) — boot entry present, but the panel
   driver is not in this kernel yet, so it may not light up.
 
-To use a DSI panel, mount the ESP partition and change the default entry in
-`loader/loader.conf`:
+**There is no interactive boot menu** — the bootloader is set to `timeout 0` and boots
+the *default* entry straight away (this is deliberate, so it always lands in Android).
+So you don't *pick* a panel at boot; you make the DSI entry the **default**.
+
+To use a DSI panel: power off, take the SD/SSD out, and on any PC open the **`esp`
+partition** (it's a normal FAT partition — mounts on Windows/Linux/macOS). Edit
+`loader/loader.conf` and change the `default` line:
 
 ```
-default android-dsi8hd       # or: android-dsi10fhd   (HDMI users keep: default android)
+default android-dsi8hd       # Radxa 8HD  (or: android-dsi10fhd for the 10FHD)
 ```
 
-Each entry uses its own device tree; HDMI is unaffected. See `loader/README-DSI.txt`
-on the ESP for details.
+(HDMI users leave it as `default android`.) Save, put the card back, boot — it now
+comes up on the DSI panel. Each entry carries its own device tree; switching back to
+HDMI is just changing the line back. See `loader/README-DSI.txt` on the ESP.
+
+> Prefer a pick-at-boot menu instead? You can set e.g. `timeout 5` in the same file —
+> but the menu draws on whichever display is already active at boot (HDMI) and needs a
+> USB keyboard, so for a DSI-only setup editing `default` is the reliable way.
 
 ---
 
