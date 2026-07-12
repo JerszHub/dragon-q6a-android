@@ -6,7 +6,8 @@ systemd-boot. This repository holds the device tree, the prebuilt artifacts need
 to build and flash, the cmdline/ramdisk history, and the full UART bring-up journey.
 
 > Status: **boots to the Android 13 UI with working display, GPU, USB/touch
-> (multitouch), WiFi and Bluetooth.** See `docs/PROGRESS.md` and `boot-logs/` for
+> (multitouch), HDMI audio, WiFi and Bluetooth — plus USB storage/Wi-Fi plug-and-play
+> and optional Google apps via the bundled TWRP.** See `docs/PROGRESS.md` and `boot-logs/` for
 > the hardware-in-the-loop bring-up.
 
 ## What works
@@ -20,7 +21,10 @@ to build and flash, the cmdline/ramdisk history, and the full UART bring-up jour
 | Ethernet | ✅ | Onboard Realtek RTL8168h on PCIe (`1c00000.pcie`); `r8169` in the ramdisk → Gigabit `eth0`, link verified at 1 Gbps full-duplex |
 | Display | ✅ | DPU → DP → onboard RA620 DP→HDMI bridge. `initcall_blacklist=simpledrm` so HWC takes the panel. **Universal HDMI** — the kernel reads the connected display's EDID (`video=HDMI-A-1:e`); no per-panel configuration required |
 | GPU | ✅ | Adreno 643 (A660), OpenGL ES 3.2 / Mesa 23.0 (freedreno), Vulkan 1.3 (Turnip); GPU firmware uncompressed in vendor |
+| Audio (HDMI) | ✅ | HDMI/DisplayPort audio via the full QCS6490 **LPASS / AudioReach** bring-up (ADSP firmware + q6apm modules + topology + tinyhal); ALSA card 0 (`QCS6490-Radxa-Dragon-Q6A`) comes up automatically |
 | USB host + touch | ✅ | dwc3 host + onboard hub; USB touchscreens work as real touchscreens (IDC forces `touch.deviceType=touchScreen`), with **multitouch** via `hid-multitouch` (up to 5 points) |
+| USB storage | ✅ | Pendrives / USB disks auto-mount (`usb-storage`/`uas` + vfat/exFAT/NTFS) — plug-and-play, shown in the Files UI |
+| USB Wi-Fi | ✅ | Common USB Wi-Fi dongles supported plug-and-play (Realtek rtw88/rtl8xxxu, MediaTek mt76, Broadcom); drivers + firmware baked in. (Onboard AIC is `wlan0`; a dongle is used automatically only if the onboard Wi-Fi is absent/dead) |
 | WiFi | ✅ | AIC8800D80 (USB), fullmac; `wpa_supplicant` + `wificond`, no vendor HAL |
 | Bluetooth | ✅ | AIC8800D80 BT = standard USB transport; `bluetooth.ko` + `aic_btusb_usb.ko` bring up `hci0`, GloDroid `btlinux` HAL drives it. `rt_group_sched=0` on the cmdline disarms an `RT_GROUP_SCHED` abort-loop |
 | adb over TCP | ✅ | `service.adb.tcp.port=5555` (USB-C is power-only — both USB controllers are host-only, so adb-by-cable is not possible on this board) |
@@ -28,6 +32,8 @@ to build and flash, the cmdline/ramdisk history, and the full UART bring-up jour
 | Launcher | ✅ | Lawnchair as the default home (seeded at boot); Launcher3QuickStep kept for recents. APK fetched via `scripts/fetch-lawnchair.sh`, not committed |
 | Screen orientation | ✅ | No accelerometer on this board, so rotation is manual: a built-in `ScreenRotate` app (Quick Settings tile + drawer app) rotates the panel via `IWindowManager.freezeRotation()`. `display_settings.xml` makes WM ignore per-app orientation requests so the user's choice wins |
 | Battery | ✅ | Battery-less SBC; a small health HAL reports full AC power instead of a stuck 0% |
+| Recovery | ✅ | **TWRP** bundled; enter it with the one-tap **"Reboot to Recovery"** app (no PC) or `adb reboot recovery` |
+| Google apps (Play) | ➕ | Not baked in (vanilla — GMS is not licensed for redistribution). Flash [MindTheGapps](https://github.com/MindTheGapps) yourself via the bundled TWRP — see [docs/FLASHING.md](docs/FLASHING.md#adding-google-apps-play-store--gms-via-twrp) |
 
 🔥
 
