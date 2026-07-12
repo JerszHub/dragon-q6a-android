@@ -51,8 +51,8 @@ prepare the card and grow the data partition — are in **[`docs/FLASHING.md`](d
 The short version (replace `sdX` with your card — double-check the device!):
 
 ```bash
-zstd -d dragon_q6a_sd_community.img.zst -o dragon_q6a_sd_community.img
-sudo dd if=dragon_q6a_sd_community.img of=/dev/sdX bs=4M status=progress conv=fsync && sync
+zstd -d dragon_q6a_universal_gapps-ready.img.zst -o dragon_q6a_universal_gapps-ready.img
+sudo dd if=dragon_q6a_universal_gapps-ready.img of=/dev/sdX bs=4M status=progress conv=fsync && sync
 ```
 
 Then insert the card and power on. **The first boot is slow and may reboot itself
