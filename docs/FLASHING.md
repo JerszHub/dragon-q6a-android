@@ -161,19 +161,13 @@ Select **Reboot → System**. This boot is slow — it re-initialises `/data`, r
 application optimisation and sets up Google services. The Play Store is present once the
 launcher appears.
 
-### 5. Device registration
+Sign in to the Google account from the setup wizard and the Play Store works — no device
+registration step is required.
 
-The build uses AOSP test keys and is therefore uncertified. Register the device once at
-[google.com/android/uncertified](https://www.google.com/android/uncertified/) using its
-Google Services Framework ID:
-
-```bash
-adb shell "sqlite3 /data/data/com.google.android.gsf/databases/gservices.db \
-  \"select * from main where name='android_id'\""
-```
-
-Enter the ID on that page, wait a few minutes and reboot. Applications gated on Play
-Integrity, such as banking applications, will not pass on an uncertified build.
+Applications gated on Play Integrity, such as banking applications, will not pass on a
+test-key build. In the rare case that sign-in is refused with *"This device isn't Play
+Protect certified"*, register the device's Google Services Framework ID once at
+[google.com/android/uncertified](https://www.google.com/android/uncertified/).
 
 ---
 
