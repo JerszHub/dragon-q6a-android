@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WiFi Adapter</string>
+    <string name="channel_name">USB WiFi adapter</string>
+    <string name="channel_desc">Detects connected USB WiFi adapters</string>
+    <string name="notif_title">WiFi adapter connected</string>
+    <string name="notif_text">USB adapter detected (%1$s). Tap \"Activate\" to use it.</string>
+    <string name="action_activate">Activate</string>
+    <string name="toast_activating">Switching Wi‑Fi to %1$s…</string>
+</resources>

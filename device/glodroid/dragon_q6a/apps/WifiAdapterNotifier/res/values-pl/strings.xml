@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Adapter WiFi</string>
+    <string name="channel_name">Adapter WiFi USB</string>
+    <string name="channel_desc">Wykrywanie podłączonych adapterów WiFi USB</string>
+    <string name="notif_title">Podłączono adapter WiFi</string>
+    <string name="notif_text">Wykryto adapter USB (%1$s). Dotknij \"Aktywuj\", aby go użyć.</string>
+    <string name="action_activate">Aktywuj</string>
+    <string name="toast_activating">Przełączam Wi‑Fi na %1$s…</string>
+</resources>

@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// WifiAdapterNotifier — surfaces plug-and-play USB Wi-Fi adapters in the UI.
+//
+// The onboard AIC8800 is the primary Wi-Fi (wlan0); a USB dongle enumerates as a
+// SECOND interface (wlan1) which stock Android Settings never shows. This tiny
+// built-in app watches /sys/class/net, and when it sees a wlanX whose kernel
+// driver is a known USB dongle driver (rtl8xxxu / mt76 / rtw88 / brcmfmac) it posts
+// a notification with an "Activate" action. Activate points the Wi-Fi framework's
+// STA at the dongle (wifi.interface) and cycles Wi-Fi so it rebinds — done
+// IN-PROCESS via WifiManager, not an init script (the app is android.uid.system,
+// platform-signed, on a permissive device). Unplugging an activated dongle
+// auto-reverts the STA to the onboard wlan0.
+//
+// platform_apis + platform certificate: needed for SystemProperties, NETWORK_SETTINGS
+// (setWifiEnabled), the persistent flag, and the system notification channels.
+
+android_app {
+    name: "WifiAdapterNotifier",
+    srcs: ["src/**/*.java"],
+    resource_dirs: ["res"],
+    manifest: "AndroidManifest.xml",
+    platform_apis: true,
+    certificate: "platform",
+    privileged: true,
+    optimize: {
+        enabled: false,
+    },
+}

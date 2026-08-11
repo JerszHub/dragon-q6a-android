@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Device framework-res overlay for the Dragon Q6A. -->
+<resources>
+    <!-- Adaptive-icon mask: squircle (rounded square), system-wide. The AOSP
+         default is a barely-rounded rectangle (corner radius ~8); this is a
+         proper squircle. Lawnchair follows the system mask by default, so this
+         becomes the default home-screen icon shape too. -->
+    <string name="config_icon_mask" translatable="false">M50,0C13.6,0,0,13.6,0,50c0,36.4,13.6,50,50,50c36.4,0,50-13.6,50-50C100,13.6,86.4,0,50,0z</string>
+
+    <!-- Audio jack detection via /dev/input. The WCD938x MBHC exports the headset
+         state as an input device ("... Headset Jack", event2) with SW_HEADPHONE_INSERT /
+         SW_MICROPHONE_INSERT, and the DP/HDMI hotplug as "... DP0 Jack" (event1) with
+         SW_LINEOUT_INSERT / SW_VIDEOOUT_INSERT. Default AOSP ignores these (uses uevent);
+         turning this on lets WiredAccessoryManager route to wired_headphone / hdmi so the
+         audio HAL's per-device paths switch (headphone -> WCD analog, hdmi -> DisplayPort). -->
+    <bool name="config_useDevInputEventForAudioJack">true</bool>
+</resources>

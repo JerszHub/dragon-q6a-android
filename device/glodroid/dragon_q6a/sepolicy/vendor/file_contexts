@@ -1,0 +1,7 @@
+# Label the device health HAL binary so init can transition it into the
+# hal_health_default domain. Without this the binary keeps the generic
+# vendor_file label and init refuses to start the 'class hal' service
+# ("incorrect label or no domain transition") — even in permissive mode —
+# so IHealth/default never registers and BatteryService hangs the boot.
+# Reuses the same exec type AOSP gives android.hardware.health-service.example.
+/(vendor|system/vendor)/bin/hw/android\.hardware\.health-service\.dragon_q6a    u:object_r:hal_health_default_exec:s0

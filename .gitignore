@@ -26,3 +26,6 @@ out/
 
 # Third-party APKs are fetched, not committed (see scripts/fetch-lawnchair.sh)
 *.apk
+# Exception: RebootRecovery is ours (12 KB) and apps/RebootRecovery/Android.bp references
+# it as a prebuilt, so the tree does not build without it.
+!device/glodroid/dragon_q6a/apps/RebootRecovery/RebootRecovery.apk

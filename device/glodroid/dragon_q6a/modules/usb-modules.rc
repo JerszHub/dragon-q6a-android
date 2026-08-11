@@ -1,0 +1,65 @@
+# USB plug-and-play modules — mass-storage (pendrive) + USB-WiFi adapters.
+# NOTE (2026-07-28): the Radxa DSI panel (panel-jadard-jd9365da-h3.ko) + its GT911 touch
+# (goodix_ts.ko) were MOVED OUT of here to first-stage BOARD_VENDOR_RAMDISK_KERNEL_MODULES_LOAD
+# in BoardConfig.mk — post-fs was far too late: the msm DRM aggregate needs the drm_panel
+# registered before it binds, else no card0 and the display (incl. HDMI) never comes up.
+# Loaded on post-fs (after /vendor mounts, so rtw88 firmware in /vendor/firmware is reachable).
+# Order is a TOPOLOGICAL sort of modules.dep (deps first) — validated 2026-07-09 after a
+# hand-ordered first cut mis-ordered rtw88 sub-drivers (rtw88_8821a needs rtw88_88xxa,
+# rtw88_8723d needs rtw88_8723x) -> Unknown-symbol insmod failures. Drivers idle until a
+# matching USB device appears (hotplug). See memory project_usb_modules.
+
+on post-fs
+    insmod /vendor/lib/usb-modules/mii.ko
+    insmod /vendor/lib/usb-modules/usbnet.ko
+    insmod /vendor/lib/usb-modules/ax88179_178a.ko
+    insmod /vendor/lib/usb-modules/brcmutil.ko
+    insmod /vendor/lib/usb-modules/rfkill.ko
+    insmod /vendor/lib/usb-modules/cfg80211.ko
+    insmod /vendor/lib/usb-modules/brcmfmac.ko
+    insmod /vendor/lib/usb-modules/cdc_ether.ko
+    insmod /vendor/lib/usb-modules/exfat.ko
+    insmod /vendor/lib/usb-modules/fat.ko
+    insmod /vendor/lib/usb-modules/libarc4.ko
+    insmod /vendor/lib/usb-modules/mac80211.ko
+    insmod /vendor/lib/usb-modules/mt76.ko
+    insmod /vendor/lib/usb-modules/mt76-connac-lib.ko
+    insmod /vendor/lib/usb-modules/mt76-usb.ko
+    insmod /vendor/lib/usb-modules/mt7601u.ko
+    insmod /vendor/lib/usb-modules/mt7615-common.ko
+    insmod /vendor/lib/usb-modules/mt7663-usb-sdio-common.ko
+    insmod /vendor/lib/usb-modules/mt7663u.ko
+    insmod /vendor/lib/usb-modules/mt76x02-lib.ko
+    insmod /vendor/lib/usb-modules/mt76x0-common.ko
+    insmod /vendor/lib/usb-modules/mt76x02-usb.ko
+    insmod /vendor/lib/usb-modules/mt76x0u.ko
+    insmod /vendor/lib/usb-modules/mt76x2-common.ko
+    insmod /vendor/lib/usb-modules/mt76x2u.ko
+    insmod /vendor/lib/usb-modules/mt792x-lib.ko
+    insmod /vendor/lib/usb-modules/mt7921-common.ko
+    insmod /vendor/lib/usb-modules/mt792x-usb.ko
+    insmod /vendor/lib/usb-modules/mt7921u.ko
+    insmod /vendor/lib/usb-modules/mt7925-common.ko
+    insmod /vendor/lib/usb-modules/mt7925u.ko
+    insmod /vendor/lib/usb-modules/nls_ucs2_utils.ko
+    insmod /vendor/lib/usb-modules/ntfs3.ko
+    insmod /vendor/lib/usb-modules/r8152.ko
+    insmod /vendor/lib/usb-modules/rndis_host.ko
+    insmod /vendor/lib/usb-modules/rtl8xxxu.ko
+    insmod /vendor/lib/usb-modules/rtw88_core.ko
+    insmod /vendor/lib/usb-modules/rtw88_8723x.ko
+    insmod /vendor/lib/usb-modules/rtw88_8723d.ko
+    insmod /vendor/lib/usb-modules/rtw88_usb.ko
+    insmod /vendor/lib/usb-modules/rtw88_8723du.ko
+    insmod /vendor/lib/usb-modules/rtw88_88xxa.ko
+    insmod /vendor/lib/usb-modules/rtw88_8812a.ko
+    insmod /vendor/lib/usb-modules/rtw88_8814a.ko
+    insmod /vendor/lib/usb-modules/rtw88_8821a.ko
+    insmod /vendor/lib/usb-modules/rtw88_8821au.ko
+    insmod /vendor/lib/usb-modules/rtw88_8821c.ko
+    insmod /vendor/lib/usb-modules/rtw88_8821cu.ko
+    insmod /vendor/lib/usb-modules/rtw88_8822b.ko
+    insmod /vendor/lib/usb-modules/rtw88_8822bu.ko
+    insmod /vendor/lib/usb-modules/usb-storage.ko
+    insmod /vendor/lib/usb-modules/uas.ko
+    insmod /vendor/lib/usb-modules/vfat.ko

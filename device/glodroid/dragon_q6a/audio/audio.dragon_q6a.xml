@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TinyHAL config for the Radxa Dragon Q6A (QCS6490).
+     Loaded by audio.primary.dragon_q6a from /vendor/etc/audio.dragon_q6a.xml.
+
+     Card 0 = "QCS6490-Radxa-Dragon-Q6A" (AudioReach/q6apm). Primary FE = MultiMedia1
+     = pcmC0D0p. FE->BE routing is via mixer controls.
+
+     ===== DYNAMIC output routing (2026-07-31) =====
+     Per-output-device paths (tinyhal maps <device name> -> AUDIO_DEVICE_OUT_*): the
+     framework selects the device (needs config_useDevInputEventForAudioJack=true in the
+     framework overlay so the WCD MBHC "Headset Jack" and "DP0 Jack" input switches are
+     honoured), and tinyhal applies that device's <path name="on"> (+ "off" for the one
+     being left).
+       headphone / headset / speaker -> WCD938x HPH (3.5 mm jack)   [validated by ear]
+       hdmi (= AUX_DIGITAL)           -> DisplayPort/HDMI
+     Bluetooth A2DP is a SEPARATE HAL (audio.bluetooth.default.so) and switches on its own.
+
+     Two hard constraints (proven live):
+     - MUTUALLY EXCLUSIVE routes: never enable RX_CODEC_DMA_RX_0 AND DISPLAY_PORT_RX_0 for
+       MultiMedia1 at once -> ADSP "Failed to prepare Graph -22" -> hang. Each on-path zeroes
+       the other route.
+     - period_size=960: the analog CDC-DMA backend XRUNs at the fast-mixer 256-frame default
+       (hw_ptr never advances -> silence). 960 fixes it + lifts the primary out of the fast path.
+
+     The WCD/RX-macro HPH graph (mixer/mux setup) is done once in <init>; it is INERT until a
+     stream is actually routed to RX_CODEC_DMA_RX_0, so it costs nothing on the hdmi path.
+     Control names/values = alsa-ucm-conf QCS6490-Radxa-Dragon-Q6A HiFi.conf + wcd938x/rx-macro
+     HeadphoneEnableSeq. tinyhal sets enum controls by string. -->
+<audiohal>
+    <mixer card="0">
+        <init>
+            <!-- WCD938x HPH graph (inert until MM1 is routed to RX_CODEC_DMA_RX_0). -->
+            <ctl name="RX_HPH PWR Mode" val="LOHIFI" />
+            <ctl name="RX_MACRO RX0 MUX" val="AIF1_PB" />
+            <ctl name="RX_MACRO RX1 MUX" val="AIF1_PB" />
+            <ctl name="RX INT0_1 MIX1 INP0" val="RX0" />
+            <ctl name="RX INT1_1 MIX1 INP0" val="RX1" />
+            <ctl name="RX INT0 DEM MUX" val="CLSH_DSM_OUT" />
+            <ctl name="RX INT1 DEM MUX" val="CLSH_DSM_OUT" />
+            <ctl name="HPHL_RDAC Switch" val="1" />
+            <ctl name="HPHR_RDAC Switch" val="1" />
+            <ctl name="HPHL Switch" val="1" />
+            <ctl name="HPHR Switch" val="1" />
+            <ctl name="HPHR_COMP Switch" val="0" />
+            <ctl name="HPHL_COMP Switch" val="0" />
+            <ctl name="CLSH Switch" val="1" />
+            <ctl name="LO Switch" val="1" />
+            <ctl name="RX HPH Mode" val="CLS_H_LOHIFI" />
+            <ctl name="HPHL Volume" val="24" />
+            <ctl name="HPHR Volume" val="24" />
+            <!-- Safe default = analog 3.5 mm route ON (validated by ear). Device paths below
+                 flip to HDMI when aux_digital is selected; so if the per-device routing ever
+                 doesn't fire, the primary use (headphones) still works. -->
+            <ctl name="RX_CODEC_DMA_RX_0 Audio Mixer MultiMedia1" val="1" />
+            <!-- Front-end playback gain (Q13, 8192 = 0 dB / unity). -->
+            <ctl name="stream0.vol_ctrl0 MultiMedia1 Playback Volume" val="8192" />
+        </init>
+    </mixer>
+
+    <!-- 3.5 mm analog jack (headphone / headset) and the speaker default all -> WCD HPH. -->
+    <device name="headphone">
+        <path name="on">
+            <ctl name="DISPLAY_PORT_RX_0 Audio Mixer MultiMedia1" val="0" />
+            <ctl name="RX_CODEC_DMA_RX_0 Audio Mixer MultiMedia1" val="1" />
+        </path>
+        <path name="off">
+            <ctl name="RX_CODEC_DMA_RX_0 Audio Mixer MultiMedia1" val="0" />
+        </path>
+    </device>
+    <device name="headset">
+        <path name="on">
+            <ctl name="DISPLAY_PORT_RX_0 Audio Mixer MultiMedia1" val="0" />
+            <ctl name="RX_CODEC_DMA_RX_0 Audio Mixer MultiMedia1" val="1" />
+        </path>
+        <path name="off">
+            <ctl name="RX_CODEC_DMA_RX_0 Audio Mixer MultiMedia1" val="0" />
+        </path>
+    </device>
+    <device name="speaker">
+        <path name="on">
+            <ctl name="DISPLAY_PORT_RX_0 Audio Mixer MultiMedia1" val="0" />
+            <ctl name="RX_CODEC_DMA_RX_0 Audio Mixer MultiMedia1" val="1" />
+        </path>
+        <path name="off">
+            <ctl name="RX_CODEC_DMA_RX_0 Audio Mixer MultiMedia1" val="0" />
+        </path>
+    </device>
+
+    <!-- HDMI / DisplayPort audio. -->
+    <device name="hdmi">
+        <path name="on">
+            <ctl name="RX_CODEC_DMA_RX_0 Audio Mixer MultiMedia1" val="0" />
+            <ctl name="DISPLAY_PORT_RX_0 Audio Mixer MultiMedia1" val="1" />
+        </path>
+        <path name="off">
+            <ctl name="DISPLAY_PORT_RX_0 Audio Mixer MultiMedia1" val="0" />
+        </path>
+    </device>
+
+    <!-- Primary output = MultiMedia1, 48 kHz stereo, period_size 960 (NOT the 256 default:
+         the analog CDC-DMA backend XRUNs on tiny fast-mixer periods). -->
+    <stream type="pcm" dir="out" card="0" device="0" rate="48000"
+            period_size="960" period_count="4">
+    </stream>
+
+    <!-- Capture = MultiMedia3 front-end PCM (mic path needs WCD TX routing; minimal). -->
+    <stream type="pcm" dir="in" card="0" device="2" rate="48000">
+    </stream>
+</audiohal>

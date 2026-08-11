@@ -1,0 +1,51 @@
+# QCS6490 audio bring-up — load the LPASS/AudioReach module stack AFTER /vendor is
+# mounted. NOT first-stage ramdisk: adsp.mbn lives in /vendor/firmware and must be
+# reachable when qcom_q6v5_pas boots the ADSP. qrtr-smd bridges the kernel QRTR net
+# to the ADSP (servreg/PD) — without it the q6apm/q6prm GPR services never appear and
+# no card is created. Order is dependency-topological; deferred-probe does the rest.
+# Full root-cause + recipe: device/glodroid/dragon_q6a/audio/BRINGUP_NOTES.md
+on post-fs
+    insmod /vendor/lib/audio-modules/pinctrl-lpass-lpi.ko
+    insmod /vendor/lib/audio-modules/pinctrl-sc7280-lpass-lpi.ko
+    insmod /vendor/lib/audio-modules/lpasscorecc-sc7280.ko
+    insmod /vendor/lib/audio-modules/lpassaudiocc-sc7280.ko
+    insmod /vendor/lib/audio-modules/qcom_pd_mapper.ko
+    insmod /vendor/lib/audio-modules/soundwire-bus.ko
+    insmod /vendor/lib/audio-modules/regmap-sdw.ko
+    insmod /vendor/lib/audio-modules/qcom_pil_info.ko
+    insmod /vendor/lib/audio-modules/qcom_glink_smem.ko
+    insmod /vendor/lib/audio-modules/qcom_common.ko
+    insmod /vendor/lib/audio-modules/qcom_sysmon.ko
+    insmod /vendor/lib/audio-modules/qcom_q6v5.ko
+    insmod /vendor/lib/audio-modules/qcom_q6v5_pas.ko
+    insmod /vendor/lib/audio-modules/slimbus.ko
+    insmod /vendor/lib/audio-modules/soundcore.ko
+    insmod /vendor/lib/audio-modules/snd.ko
+    insmod /vendor/lib/audio-modules/snd-timer.ko
+    insmod /vendor/lib/audio-modules/snd-pcm.ko
+    insmod /vendor/lib/audio-modules/snd-compress.ko
+    insmod /vendor/lib/audio-modules/snd-pcm-dmaengine.ko
+    insmod /vendor/lib/audio-modules/snd-soc-core.ko
+    insmod /vendor/lib/audio-modules/soundwire-qcom.ko
+    insmod /vendor/lib/audio-modules/snd-soc-hdmi-codec.ko
+    insmod /vendor/lib/audio-modules/snd-soc-wcd-classh.ko
+    insmod /vendor/lib/audio-modules/snd-soc-wcd-common.ko
+    insmod /vendor/lib/audio-modules/snd-soc-wcd-mbhc.ko
+    insmod /vendor/lib/audio-modules/snd-soc-wcd938x-sdw.ko
+    insmod /vendor/lib/audio-modules/snd-soc-wcd938x.ko
+    insmod /vendor/lib/audio-modules/snd-soc-lpass-macro-common.ko
+    insmod /vendor/lib/audio-modules/snd-soc-lpass-wsa-macro.ko
+    insmod /vendor/lib/audio-modules/snd-soc-lpass-va-macro.ko
+    insmod /vendor/lib/audio-modules/snd-soc-lpass-rx-macro.ko
+    insmod /vendor/lib/audio-modules/snd-soc-lpass-tx-macro.ko
+    insmod /vendor/lib/audio-modules/snd-soc-lpass-hdmi.ko
+    insmod /vendor/lib/audio-modules/snd-soc-qcom-sdw.ko
+    insmod /vendor/lib/audio-modules/snd-soc-qcom-common.ko
+    insmod /vendor/lib/audio-modules/snd-soc-sc8280xp.ko
+    insmod /vendor/lib/audio-modules/snd-q6dsp-common.ko
+    insmod /vendor/lib/audio-modules/snd-q6apm.ko
+    insmod /vendor/lib/audio-modules/q6apm-dai.ko
+    insmod /vendor/lib/audio-modules/q6apm-lpass-dais.ko
+    insmod /vendor/lib/audio-modules/q6prm.ko
+    insmod /vendor/lib/audio-modules/q6prm-clocks.ko
+    insmod /vendor/lib/audio-modules/qrtr-smd.ko

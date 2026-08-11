@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.dragonq6a.wifiadapter"
+    android:sharedUserId="android.uid.system">
+
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- Wi-Fi control: ACCESS/CHANGE_WIFI_STATE for WifiManager, plus NETWORK_SETTINGS
+         (signature|privileged) so setWifiEnabled() is honored on Android 13 — third-party
+         callers get a silent no-op there. Auto-granted to this platform-signed app. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.NETWORK_SETTINGS" />
+
+    <!-- Runs continuously as a system process so we can poll for adapters without
+         an ongoing foreground-service notification. Allowed for a platform-signed
+         app on the system image. -->
+    <application
+        android:label="@string/app_name"
+        android:icon="@drawable/ic_wifi_adapter"
+        android:persistent="true"
+        android:allowBackup="false"
+        android:supportsRtl="true">
+
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".AdapterMonitorService"
+            android:exported="false" />
+
+        <receiver
+            android:name=".ActivateReceiver"
+            android:exported="false" />
+    </application>
+</manifest>

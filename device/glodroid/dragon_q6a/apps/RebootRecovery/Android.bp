@@ -1,0 +1,12 @@
+// One-tap "Reboot to Recovery" app (com.q6a.rebootrecovery). Sets sys.powerctl=
+// reboot,recovery -> embloader reads the Android BCB from misc -> boots TWRP.
+// Baked as a product app; works under this build's permissive SELinux.
+android_app_import {
+    name: "RebootRecovery",
+    apk: "RebootRecovery.apk",
+    presigned: true,
+    product_specific: true,
+    dex_preopt: {
+        enabled: false,
+    },
+}
