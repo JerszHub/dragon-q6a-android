@@ -1,275 +1,226 @@
-# Flashing the SD card
+# Installation guide
 
-This image boots the Radxa Dragon Q6A entirely from a microSD card. The onboard
-SPI firmware (Qualcomm XBL/UEFI) and any eMMC are left untouched, so flashing is
-non-destructive to the board and fully reversible — just re-flash or swap the card.
+This guide covers writing the Android 13 image to an SD card or an NVMe SSD,
+selecting a display panel, and installing Google applications.
 
-- **Card size:** 8 GB minimum; 16 GB or larger recommended (the data partition is
-  grown to fill the card).
-- **What you need:** the release asset `dragon_q6a_universal_gapps-ready.img.zst` and a card
-  reader.
+The image boots through the board's existing UEFI firmware. The onboard SPI
+firmware and any eMMC contents are left untouched, so the installation is
+reversible — re-write or replace the card to go back.
 
----
+**Requirements**
 
-## Option A — graphical (any OS, easiest)
-
-[balenaEtcher](https://etcher.balena.io/) and the Raspberry Pi Imager both read
-`.zst` directly:
-
-1. Select `dragon_q6a_universal_gapps-ready.img.zst`.
-2. Select your SD card.
-3. Flash.
-
-That is all the image itself needs to boot. To use the full card capacity for apps
-and data, optionally grow the data partition afterwards (see *Grow the data
-partition* below); otherwise the system still boots on the as-flashed layout.
+- An SD card of 8 GB or more (16 GB or larger recommended), or an M.2 2230 NVMe SSD
+- The release asset `dragon_q6a_universal-v6.img.zst` (or `.img.xz`)
+- A card reader, or a USB→M.2 adapter for NVMe
 
 ---
 
-## Option B — command line (Linux / WSL2 / macOS)
+## Writing the image
 
-> ⚠️ `dd` writes to a raw block device. **Triple-check the target** — writing to the
-> wrong disk destroys it. On Linux/WSL2 use `lsblk` to confirm the card is, e.g.,
-> a removable ~239 GB "Storage Device"; on macOS use `diskutil list`.
+### Graphical (any operating system)
 
-### 1. Identify the card
+[balenaEtcher](https://etcher.balena.io/) and Raspberry Pi Imager read the compressed
+image directly:
+
+1. Select `dragon_q6a_universal-v6.img.zst` (or the `.img.xz` asset).
+2. Select the target card.
+3. Write.
+
+### Command line (Linux, WSL2, macOS)
+
+> **Warning:** `dd` writes to a raw block device. Confirm the target before running it —
+> writing to the wrong disk destroys its contents. Use `lsblk` on Linux or
+> `diskutil list` on macOS.
+
+Identify the card:
 
 ```bash
-lsblk -do NAME,SIZE,RM,TYPE,MODEL     # the card is the removable (RM=1) device, e.g. /dev/sdX
+lsblk -do NAME,SIZE,RM,TYPE,MODEL     # the card is the removable (RM=1) device
 ```
 
-### 2. Wipe the old partition table (recommended)
-
-Clearing any previous GPT — including the **backup GPT** at the end of the card —
-avoids a stale partition table that some firmware complains about:
+Clearing any previous partition table first — including the backup GPT at the end of
+the card — avoids a stale table being detected:
 
 ```bash
 sudo sgdisk --zap-all /dev/sdX
 sudo wipefs -a /dev/sdX
 ```
 
-### 3. Decompress and write the image
+Write the image:
 
 ```bash
-zstd -d dragon_q6a_universal_gapps-ready.img.zst -o dragon_q6a_universal_gapps-ready.img
-sudo dd if=dragon_q6a_universal_gapps-ready.img of=/dev/sdX bs=4M conv=fsync status=progress
+zstd -dc dragon_q6a_universal-v6.img.zst | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
 sync
 ```
 
-You can also stream it without keeping the decompressed copy on disk:
+### Using the full card capacity
+
+The image ships a small `userdata` partition. To extend it across the whole card, move
+the backup GPT to the end of the device and grow partition 13:
 
 ```bash
-zstd -dc dragon_q6a_universal_gapps-ready.img.zst | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
-sync
-```
-
-### 4. (Recommended) Grow the data partition
-
-The image ships a small `userdata` partition. To use the whole card, move the
-backup GPT to the real end of the card and extend partition 13:
-
-```bash
-sudo sgdisk -e /dev/sdX            # relocate backup GPT to end of card
-sudo growpart /dev/sdX 13          # extend userdata to fill the card
+sudo sgdisk -e /dev/sdX            # relocate the backup GPT
+sudo growpart /dev/sdX 13          # extend userdata
 sudo partprobe /dev/sdX
 ```
 
-Android formats `/data` on first boot, so no manual filesystem resize is needed.
+Android formats `/data` on first boot, so no filesystem resize is required. This step is
+optional; the system boots on the as-written layout.
+
+### First boot
+
+Insert the card and power on. The first boot initialises `/data` and runs application
+optimisation. It takes several minutes, may restart once, and shows the boot animation or
+a black screen while it works. Subsequent boots are considerably faster.
 
 ---
 
-## Boot it
+## Installing to an NVMe SSD
 
-1. Eject the card and insert it into the Q6A.
-2. Power on and **be patient on the very first boot.** It formats `/data`, runs
-   first-boot optimization (dexopt), and **may reboot itself once or twice and sit
-   on a black screen or the boot animation for a few minutes — this is normal.**
-   Subsequent boots are much faster. Only treat it as a problem if it keeps
-   power-cycling for more than ~5 minutes; then capture a UART log (below).
+The same image boots from either medium: the kernel command line lists both boot devices
+and the PCIe PHY is loaded in first-stage init, so `/data` and `super` mount from
+whichever device holds the partitions. The board's UEFI boots from NVMe, so an SSD
+installation is standalone and the SD card can be removed.
 
-### Optional: watch the boot over UART
+- Slot: onboard M.2 M-key 2230, PCIe Gen3 ×2
+- Measured throughput: approximately 1.0 GB/s write, 0.97 GB/s read (single-stream `dd`)
 
-Useful if a display does not light up. Connect a **1.8 V** UART adapter (e.g.
-CP2102) to UART0 on the 40-pin header (GND=pin6, board-TX=pin8, board-RX=pin10),
-open a serial terminal at `115200 8N1`, and power-cycle the board. Reading only the
-board's TX line is enough for logging.
+> **Warning:** writing the image to the SSD erases everything on it, including any
+> existing operating system.
 
----
+### With a USB→M.2 adapter
 
-## Installing to an NVMe SSD (optional)
+Identical to writing an SD card: connect the SSD to a computer and follow the steps
+above, using the SSD's block device as the target. Grow partition 13 the same way, then
+move the SSD into the board's M.2 slot.
 
-From the **universal** release onward the **same image boots from either the SD
-card or an NVMe SSD** — the kernel cmdline lists both boot devices
-(`androidboot.boot_devices=...mmc,...1c08000.pcie`) and the PCIe PHY is baked into
-the ramdisk, so `nvme0n1` is ready at first-stage and `/data`/`super` mount from
-whichever medium holds the partitions.
+### From a running system
 
-- **Slot:** onboard M.2 **M-key 2230**, **PCIe Gen3 ×2** (`1c08000.pcie`).
-- Real-world sequential throughput on the reference build: **~1.0 GB/s write,
-  ~0.97 GB/s read** (single-stream `dd`; bursts higher).
-- The board's **UEFI boots from NVMe**, so once the image is on the SSD it is a
-  fully standalone install — the SD card can be removed.
+The image can also be written to the SSD from the board itself:
 
-> ⚠️ Writing the image to the SSD **erases everything on it** (including any
-> existing Windows/Linux install).
-
-### Method A — USB→M.2 adapter on a PC (recommended)
-
-If you have a USB→M.2 (NVMe) enclosure/adapter, this is identical to flashing an SD
-card: plug the SSD into the PC and follow **Option B** above, using the NVMe's
-block device as the target (and `sgdisk -e` + `growpart <dev> 13` to grow `/data`
-to the full SSD). Then move the SSD into the board's M.2 slot.
-
-### Method B — no adapter, from a board already running this image
-
-You can clone the running image straight onto the SSD from the board itself:
-
-1. Flash the image to an **SD card** (Options A/B above) and boot the board once
-   with the **NVMe seated in the M.2 slot**.
-2. From a PC on the same network, over `adb` (TCP, `:5555`), stream the image onto
-   the SSD:
+1. Write the image to an SD card and boot the board once with the NVMe installed.
+2. From a computer on the same network, stream the image onto the SSD over ADB:
 
    ```bash
+   adb connect <device-ip>:5555
    adb root
-   zstd -dc dragon_q6a_universal_gapps-ready.img.zst \
-     | adb shell 'dd of=/dev/block/nvme0n1 bs=4M conv=fsync'
+   zstd -dc dragon_q6a_universal-v6.img.zst | adb shell 'dd of=/dev/block/nvme0n1 bs=4M conv=fsync'
    ```
 
-3. **Grow `/data` to the full SSD.** The on-device `sgdisk` is limited, so the
-   simplest path is to grow the partition table later from a PC with a USB→M.2
-   adapter (`sgdisk -e` + `growpart … 13`). Without that step the install still
-   boots fine — `/data` just uses the as-flashed size until grown.
-4. Power off, **remove the SD card**, power on. The board's UEFI falls back to the
-   NVMe ESP and boots Android straight from the SSD. (With both an SD and an
-   NVMe install present, pick the boot device from the UEFI/systemd-boot menu.)
+3. Power off, remove the SD card and power on. The system boots from the SSD.
+
+To use the SSD's full capacity, grow partition 13 later from a computer with a USB→M.2
+adapter. Without that step the installation still boots; `/data` simply uses the
+as-written size.
 
 ---
 
-## Adding Google Apps (Play Store / GMS) via TWRP
+## Google applications (Play Store / GMS)
 
-The image ships **vanilla** (no Google apps baked in) — redistributing Google's
-proprietary GMS is not permitted without a license. Instead, the image includes a
-**TWRP recovery** so you can flash [MindTheGapps](https://github.com/MindTheGapps)
-yourself for private use. This build is prepared for it: dm-verity is disabled, the
-`super` sub-partitions are writable with free space, and TWRP handles the dynamic
-(A/B) partitions.
+The image is vanilla AOSP and contains no Google applications, which cannot be
+redistributed without a licence. The bundled TWRP recovery allows them to be installed
+afterwards. The build is prepared for this: dm-verity is disabled, the `super`
+sub-partitions are writable and have free space, and TWRP handles the dynamic partitions.
 
-**You need:**
-- `MindTheGapps-13.0.0-arm64-*.zip` on a **USB stick** (FAT/exFAT/NTFS all work).
-- A **USB keyboard + mouse** — the recovery UI is navigated with a mouse cursor
-  (the HDMI panel is not multi-touch in recovery).
-- `adb` over TCP to the running device (see below) to enter recovery.
+**Requirements**
 
-### 1. Enter TWRP recovery
+- `MindTheGapps-13.0.0-arm64-*.zip` on a USB stick (FAT, exFAT or NTFS)
+- A USB keyboard and mouse — the recovery interface is cursor-driven
+- Network access to the device for ADB, if entering recovery from a computer
 
-The bootloader auto-boots Android, so trigger recovery from the running system. **No PC
-needed** — the image ships a one-tap app:
+### 1. Enter recovery
 
-- **Easiest — on the device:** open the **"Reboot to Recovery"** app (bundled). It
-  reboots straight into TWRP.
-- **From a PC over adb** (adb-over-TCP is enabled from boot on port 5555):
+The bootloader boots Android directly, so recovery is triggered from the running system:
+
+- **On the device:** open the bundled **Reboot to Recovery** application.
+- **From a computer:**
 
   ```bash
   adb connect <device-ip>:5555
   adb reboot recovery
   ```
 
-Either way the board reboots into TWRP (one-shot via the boot-control block). Plug in
-the USB stick + keyboard/mouse.
+The board restarts into TWRP. Connect the USB stick, keyboard and mouse.
 
-### 2. Flash MindTheGapps
+### 2. Install the package
 
-In TWRP: **Install** → change storage to the **USB** volume → select the
-MindTheGapps zip → swipe/confirm to flash. It should report *"… mounted"* and finish
-successfully.
+In TWRP select **Install**, change the storage to the USB volume, select the
+MindTheGapps archive and confirm.
 
-### 3. Reset data — use **Format Data**, not "Factory Reset"
+### 3. Format data
 
-> ⚠️ **Important:** Use **Wipe → Format Data** and **type `yes`** when prompted.
-> Do **not** use the "Factory Reset" slider — it tries to *mount* `/data` to delete
-> files, which fails on this device (encrypted `/data`), giving *"Factory Reset
-> Failed"* / *"failed to mount /data"*. **Format Data** does a raw reformat (no mount
-> needed) and is the correct step. Seeing *"Unable to mount /data"* right after the
-> format is expected and harmless — Android re-initializes `/data` on next boot.
+> **Important:** use **Wipe → Format Data** and type `yes` when prompted. Do not use the
+> Factory Reset slider — it mounts `/data` to delete files, which fails on this device and
+> reports *"Factory Reset Failed"*. Format Data performs a raw reformat instead. An
+> *"Unable to mount /data"* message immediately after formatting is expected; Android
+> re-initialises the partition on the next boot.
 
 ### 4. Reboot
 
-**Reboot → System.** The first boot is **slow** (it re-encrypts `/data`, runs dexopt,
-and initializes Google services) — give it several minutes. You should land on the
-launcher with the **Play Store** present.
+Select **Reboot → System**. This boot is slow — it re-initialises `/data`, runs
+application optimisation and sets up Google services. The Play Store is present once the
+launcher appears.
 
-### 5. (If Play shows "device not certified")
+### 5. Device registration
 
-Because the build uses AOSP test-keys it is uncertified. Register the device's Google
-Services Framework ID once at
-[google.com/android/uncertified](https://www.google.com/android/uncertified/):
+The build uses AOSP test keys and is therefore uncertified. Register the device once at
+[google.com/android/uncertified](https://www.google.com/android/uncertified/) using its
+Google Services Framework ID:
 
 ```bash
 adb shell "sqlite3 /data/data/com.google.android.gsf/databases/gservices.db \
   \"select * from main where name='android_id'\""
 ```
 
-Enter that ID on the page, wait a few minutes, then reboot. (Play *Integrity* /
-SafetyNet-gated apps like banking will still not pass on an unlocked test-keys build.)
+Enter the ID on that page, wait a few minutes and reboot. Applications gated on Play
+Integrity, such as banking applications, will not pass on an uncertified build.
 
 ---
 
-## Radxa MIPI-DSI touchscreens (optional)
+## Display selection
 
-HDMI is the default output. The image also ships boot entries for Radxa's MIPI-DSI
-panels, selectable by editing the ESP (FAT) partition on any PC:
+HDMI is the default output and requires no configuration — the kernel reads the connected
+display's EDID and uses its native mode.
 
-- **8HD** — Radxa 8" HD (`display-8hd-ad002`) + Goodix GT911 touch — **fully supported.**
-- **10FHD** — Radxa 10" FHD (`display-10fhd-ad003`) — boot entry present, but the panel
-  driver is not in this kernel yet, so it may not light up.
+The image also ships boot entries for Radxa's MIPI-DSI panels:
 
-**There is no interactive boot menu** — the bootloader is set to `timeout 0` and boots
-the *default* entry straight away (this is deliberate, so it always lands in Android).
-So you don't *pick* a panel at boot; you make the DSI entry the **default**.
+- **Radxa Display 8HD** (`android-dsi8hd`) — panel and Goodix GT911 touch drivers are
+  included. DSI support is experimental.
+- **Radxa Display 10FHD** (`android-dsi10fhd`) — a boot entry is present, but the panel
+  driver is not in this kernel, so the panel may not initialise.
 
-To use a DSI panel: power off, take the SD/SSD out, and on any PC open the **`esp`
-partition** (it's a normal FAT partition — mounts on Windows/Linux/macOS). Edit
-`loader/loader.conf` and change the `default` line:
+There is no interactive boot menu; the bootloader is configured with `timeout 0` and boots
+the default entry immediately. A DSI panel is selected by making its entry the default.
+
+Power off, remove the card and open the **`esp`** partition on any computer — it is a
+standard FAT partition. Edit `loader/loader.conf` and set the `default` line:
 
 ```
-default android-dsi8hd       # Radxa 8HD  (or: android-dsi10fhd for the 10FHD)
+default android-dsi8hd
 ```
 
-(HDMI users leave it as `default android`.) Save, put the card back, boot — it now
-comes up on the DSI panel. Each entry carries its own device tree; switching back to
-HDMI is just changing the line back. See `loader/README-DSI.txt` on the ESP.
-
-> Prefer a pick-at-boot menu instead? You can set e.g. `timeout 5` in the same file —
-> but the menu draws on whichever display is already active at boot (HDMI) and needs a
-> USB keyboard, so for a DSI-only setup editing `default` is the reliable way.
-
----
-
-## USB Wi-Fi adapters (optional)
-
-Drivers and firmware for the common USB Wi-Fi chips are baked in and load at boot, so a
-dongle is detected plug-and-play:
-
-- **Realtek** — rtw88 (8811/8812/8821/8822) and rtl8xxxu (8188/8192/8723)
-- **MediaTek** — mt76 (7601, 76x0, 7921, 7925)
-- **Broadcom** — brcmfmac
-
-**Interface note:** Android's Wi-Fi settings use the **primary** interface (`wlan0` =
-the onboard AIC8800). If the onboard Wi-Fi works, a dongle enumerates as `wlan1` and the
-Settings UI does not switch to it automatically. If your onboard Wi-Fi is **dead**, the
-dongle typically takes `wlan0` and works in the UI with no extra steps.
+HDMI installations leave this as `default android`. Each entry carries its own device
+tree; reverting is a matter of changing the line back. Further details are in
+`loader/README-DSI.txt` on the ESP.
 
 ---
 
 ## Troubleshooting
 
-- **No picture on an HDMI monitor** — the image is universal and reads the
-  display's EDID. If a particular panel ships a bad/empty EDID, you can supply one:
-  put the EDID blob at `Android/edid/<name>.bin` on the ESP (FAT) partition and add
-  `drm.edid_firmware=HDMI-A-1:edid/<name>.bin` to the `options` line in
-  `loader/entries/android.conf`.
-- **Touch acts like a mouse** — the device tree's IDC maps known USB touch panels
-  to a touchscreen. For an unlisted panel, add an IDC keyed to its USB VID/PID.
-- **Board reboots before any UI** — capture the UART log; a first-stage init abort
-  (e.g. an unresolved kernel module) restarts the board before the kernel reaches
-  the UI. The log names the failing module/service.
+**No picture on an HDMI display.** The image reads the display's EDID. If a display
+provides an invalid or empty EDID, supply one manually: place the EDID blob at
+`Android/edid/<name>.bin` on the ESP partition and add
+`drm.edid_firmware=HDMI-A-1:edid/<name>.bin` to the `options` line in
+`loader/entries/android.conf`.
+
+**A USB touchscreen behaves like a mouse.** Known USB touch panels are mapped to
+touchscreens by input device configuration. An unlisted panel needs an `.idc` file keyed
+to its USB vendor and product ID.
+
+**A USB Wi-Fi adapter is not used.** Android uses the onboard radio by default. Connecting
+an adapter raises a notification offering to switch to it; the onboard radio is restored
+when the adapter is removed.
+
+**Verbose boot logging.** The default boot entry runs with a quiet console. The
+remaining entries in `loader/entries/` keep full kernel logging on the serial console
+(UART0, 115200 8N1) and can be made the default the same way a DSI panel is selected.

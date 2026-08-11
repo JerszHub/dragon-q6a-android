@@ -1,135 +1,135 @@
-# Android 13 (GloDroid / AOSP) on the Radxa Dragon Q6A
+# Android 13 for the Radxa Dragon Q6A
 
-A from-scratch [GloDroid](https://github.com/GloDroid)-based **Android 13** port for
-the **Radxa Dragon Q6A** (Qualcomm QCS6490), booting from SD card via UEFI +
-systemd-boot. This repository holds the device tree, the prebuilt artifacts needed
-to build and flash, the cmdline/ramdisk history, and the full UART bring-up journey.
+An AOSP-based **Android 13** distribution for the **Radxa Dragon Q6A** (Qualcomm
+QCS6490), built on [GloDroid](https://github.com/GloDroid). This repository contains
+the device tree, the prebuilt kernel and firmware required to build it, and the
+end-user documentation.
 
-> Status: **boots to the Android 13 UI with working display, GPU, USB/touch
-> (multitouch), HDMI audio, WiFi and Bluetooth — plus USB storage/Wi-Fi plug-and-play
-> and optional Google apps via the bundled TWRP.** See `docs/PROGRESS.md` and `boot-logs/` for
-> the hardware-in-the-loop bring-up.
+Ready-to-flash images are published on the [Releases](../../releases) page. The
+system boots from an SD card or an NVMe SSD via the board's UEFI firmware; the
+onboard SPI firmware and eMMC are not modified.
 
-## What works
+## Device specifications
 
+| Component | Specification |
+|---|---|
+| SoC | Qualcomm QCS6490 (Kodiak) |
+| CPU | 4× Cortex-A78 + 4× Cortex-A55 |
+| GPU | Adreno 643 |
+| Memory | 8 GB LPDDR5 |
+| Storage | microSD, M.2 M-key 2230 NVMe (PCIe Gen3 ×2), eMMC |
+| Display | HDMI via onboard RA620 DP→HDMI bridge; MIPI-DSI |
+| Networking | Gigabit Ethernet (RTL8168h), AIC8800D80 Wi-Fi + Bluetooth |
+| Audio | HDMI/DisplayPort, 3.5 mm analog jack, Bluetooth A2DP |
 
-| Subsystem | Status | Notes |
-|-----------|--------|-------|
-| Boot chain | ✅ | Qualcomm UEFI (SPI) → systemd-boot → kernel + DTB + ramdisk from ESP |
-| Boot to UI | ✅ | `sys.boot_completed=1`, zero reboots |
-| Storage (SD **or NVMe**) | ✅ | **One universal image boots from either the SD card or an M.2 NVMe SSD.** PCIe PHY (`phy-qcom-qmp-pcie`) baked into the ramdisk; `boot_devices` lists both `mmc` + `1c08000.pcie` (Gen3 ×2). UEFI boots from NVMe, so the SD can be removed. ~1.0 GB/s write / ~0.97 GB/s read (`dd`) |
-| Ethernet | ✅ | Onboard Realtek RTL8168h on PCIe (`1c00000.pcie`); `r8169` in the ramdisk → Gigabit `eth0`, link verified at 1 Gbps full-duplex |
-| Display | ✅ | DPU → DP → onboard RA620 DP→HDMI bridge. `initcall_blacklist=simpledrm` so HWC takes the panel. **Universal HDMI** — the kernel reads the connected display's EDID (`video=HDMI-A-1:e`); no per-panel configuration required |
-| GPU | ✅ | Adreno 643 (A660), OpenGL ES 3.2 / Mesa 23.0 (freedreno), Vulkan 1.3 (Turnip); GPU firmware uncompressed in vendor |
-| Audio (HDMI) | ✅ | HDMI/DisplayPort audio via the full QCS6490 **LPASS / AudioReach** bring-up (ADSP firmware + q6apm modules + topology + tinyhal); ALSA card 0 (`QCS6490-Radxa-Dragon-Q6A`) comes up automatically |
-| USB host + touch | ✅ | dwc3 host + onboard hub; USB touchscreens work as real touchscreens (IDC forces `touch.deviceType=touchScreen`), with **multitouch** via `hid-multitouch` (up to 5 points) |
-| USB storage | ✅ | Pendrives / USB disks auto-mount (`usb-storage`/`uas` + vfat/exFAT/NTFS) — plug-and-play, shown in the Files UI |
-| USB Wi-Fi | ✅ | Common USB Wi-Fi dongles supported plug-and-play (Realtek rtw88/rtl8xxxu, MediaTek mt76, Broadcom); drivers + firmware baked in. (Onboard AIC is `wlan0`; a dongle is used automatically only if the onboard Wi-Fi is absent/dead) |
-| WiFi | ✅ | AIC8800D80 (USB), fullmac; `wpa_supplicant` + `wificond`, no vendor HAL |
-| Bluetooth | ✅ | AIC8800D80 BT = standard USB transport; `bluetooth.ko` + `aic_btusb_usb.ko` bring up `hci0`, GloDroid `btlinux` HAL drives it. `rt_group_sched=0` on the cmdline disarms an `RT_GROUP_SCHED` abort-loop |
-| adb over TCP | ✅ | `service.adb.tcp.port=5555` (USB-C is power-only — both USB controllers are host-only, so adb-by-cable is not possible on this board) |
-| Navigation | ✅ | A 3-button navigation bar on small displays; on large displays the system taskbar provides navigation. Driven by the UI density (`ro.sf.lcd_density=170`), so there is always an on-screen way to go Home/Back/Recents |
-| Launcher | ✅ | Lawnchair as the default home (seeded at boot); Launcher3QuickStep kept for recents. APK fetched via `scripts/fetch-lawnchair.sh`, not committed |
-| Screen orientation | ✅ | No accelerometer on this board, so rotation is manual: a built-in `ScreenRotate` app (Quick Settings tile + drawer app) rotates the panel via `IWindowManager.freezeRotation()`. `display_settings.xml` makes WM ignore per-app orientation requests so the user's choice wins |
-| Battery | ✅ | Battery-less SBC; a small health HAL reports full AC power instead of a stuck 0% |
-| Recovery | ✅ | **TWRP** bundled; enter it with the one-tap **"Reboot to Recovery"** app (no PC) or `adb reboot recovery` |
-| Google apps (Play) | ➕ | Not baked in (vanilla — GMS is not licensed for redistribution). Flash [MindTheGapps](https://github.com/MindTheGapps) yourself via the bundled TWRP — see [docs/FLASHING.md](docs/FLASHING.md#adding-google-apps-play-store--gms-via-twrp) |
+## Features
 
-🔥
+**Platform**
 
-## Hardware
+- Android 13 (AOSP) with GloDroid HAL support
+- Adreno 643 hardware acceleration — OpenGL ES 3.2 and Vulkan 1.3 (Mesa, freedreno/Turnip)
+- Virtual A/B partition layout with dynamic partitions
+- Linux 6.18 (`6.18.2-4-qcom`)
 
-- **Board:** Radxa Dragon Q6A (Qualcomm QCS6490 / Kodiak)
-- **Display:** any HDMI monitor via the onboard RA620 DP→HDMI bridge (the kernel
-  reads the display's EDID); USB touchscreens are supported, including multitouch
-- **Storage:** boots from SD card (`mmc@8804000`) **or M.2 NVMe SSD** (M-key 2230,
-  PCIe Gen3 ×2 on `1c08000.pcie`) — the same universal image works on either; eMMC untouched
-- **Ethernet:** onboard Realtek RTL8168h Gigabit on PCIe (`1c00000.pcie`)
-- **WiFi/BT:** AIC8800D80 combo, USB-attached behind the onboard hub
-- **Debug:** UART0 on the 40-pin header (GND=pin6, board-TX=pin8, board-RX=pin10, 115200 8N1, 1.8 V)
+**Display and input**
 
-## Quick flash (ready-made image)
+- HDMI output at the connected display's native mode, configured from its EDID
+- MIPI-DSI support for the Radxa Display 8HD (Jadard JD9365DA-H3 + Goodix GT911 touch)
+- USB touchscreens, including multitouch up to 5 points
+- Manual display rotation through a Quick Settings tile (the board has no accelerometer)
+- Adaptive navigation: a 3-button navigation bar on small displays, the system taskbar on large ones
 
-A ready-to-flash community image (`.img.zst`) is attached to the
-[Releases](../../releases) page. Full step-by-step instructions — including how to
-prepare the card and grow the data partition — are in **[`docs/FLASHING.md`](docs/FLASHING.md)**.
+**Connectivity**
 
-The short version (replace `sdX` with your card — double-check the device!):
+- Gigabit Ethernet
+- Onboard Wi-Fi (AIC8800D80) and Bluetooth
+- USB Wi-Fi adapters — Realtek (rtw88, rtl8xxxu), MediaTek (mt76) and Broadcom (brcmfmac)
+  drivers and firmware are included. Connecting an adapter raises a notification that
+  switches the active Wi-Fi interface to it; removing the adapter restores the onboard radio
+- USB mass storage with FAT, exFAT and NTFS
+- ADB over TCP on port 5555
+
+**Audio**
+
+- HDMI/DisplayPort output through the QCS6490 LPASS/AudioReach pipeline
+- 3.5 mm analog stereo output
+- Bluetooth A2DP
+- Automatic routing between outputs as devices are connected and disconnected
+
+**System**
+
+- TWRP recovery, reachable from the bundled Reboot to Recovery application or `adb reboot recovery`
+- Lawnchair launcher
+- Google applications are not included; they can be installed through the bundled
+  recovery — see [docs/FLASHING.md](docs/FLASHING.md#google-applications-play-store--gms)
+
+## Not supported
+
+- **Hardware video decoding.** The Venus video codec requires proprietary firmware that
+  is not part of this distribution. Video is decoded in software.
+- **Hexagon NPU.** On-device ML acceleration requires proprietary Qualcomm libraries.
+  GPU acceleration is unaffected.
+- **ADB over USB.** Both USB controllers on this board are host-only; the USB-C port
+  supplies power only. Use ADB over TCP.
+
+## Installation
+
+Download the image from the [Releases](../../releases) page and write it to an SD card
+or NVMe SSD. Full instructions, including NVMe installation and Google applications,
+are in **[docs/FLASHING.md](docs/FLASHING.md)**.
 
 ```bash
-zstd -d dragon_q6a_universal_gapps-ready.img.zst -o dragon_q6a_universal_gapps-ready.img
-sudo dd if=dragon_q6a_universal_gapps-ready.img of=/dev/sdX bs=4M status=progress conv=fsync && sync
+zstd -d dragon_q6a_universal-v6.img.zst -o dragon_q6a_universal-v6.img
+sudo dd if=dragon_q6a_universal-v6.img of=/dev/sdX bs=4M conv=fsync status=progress
+sync
 ```
 
-Then insert the card and power on. **The first boot is slow and may reboot itself
-once or twice and sit on a black screen / boot animation for a few minutes — this is
-normal** (it formats `/data` and runs first-boot optimization). Later boots are fast.
+The first boot initialises `/data` and runs application optimisation; it takes several
+minutes and may restart once. Subsequent boots are fast.
 
-## Build from source
+## Building
 
-This device tree plugs into a GloDroid (Android 13, `master`) checkout:
+The device tree builds inside a GloDroid (Android 13) checkout:
 
 ```bash
-# inside a synced glodroid tree:
+# from a synced GloDroid tree
 cp -r device/glodroid/dragon_q6a <glodroid>/device/glodroid/
-# the prebuilt kernel Image + DTB live under device/glodroid/dragon_q6a/prebuilt/
-# fetch the Lawnchair launcher APK (third-party, not committed):
+
+# fetch the Lawnchair launcher (third-party, not redistributed here)
 scripts/fetch-lawnchair.sh
+
 source build/envsetup.sh
 lunch dragon_q6a-userdebug
-make droid              # add -j<N> to taste for your build host
-# then assemble the SD image:
+make droid
+
+# assemble the flashable image
 device/glodroid/dragon_q6a/gensdimg-uefi.sh
 ```
 
-The kernel is the **RadxaOS prebuilt 6.18.2-4-qcom** (not rebuilt) — `prebuilt/Image`
+The kernel is the RadxaOS prebuilt `6.18.2-4-qcom` and is not rebuilt: `prebuilt/Image`
 and `prebuilts-radxa/modules.tar.gz` are committed directly. See `NOTICE` for the
 GPL-2.0 source offer.
 
 ## Repository layout
 
 ```
-device/glodroid/dragon_q6a/   the device tree (BoardConfig, device.mk, esp/, firmware/,
-                              prebuilt/, gensdimg-uefi.sh) — drop into a GloDroid checkout
-  apps/                       baked apps: Lawnchair (prebuilt import) + ScreenRotate (rotation UI)
-  health/                     AC-power health HAL for the battery-less board
-docs/                         DOCUMENTATION, FLASHING, ARCHITECTURE, PROGRESS + reference DTS/kernel config
-prebuilts-radxa/              RadxaOS extracts (modules.tar.gz, BOOTAA64.EFI)
-images/                       latest ramdisk + cmdline (.conf) history
-boot-logs/                    verbatim UART boot logs across the whole bring-up
-scripts/                      helper scripts
+device/glodroid/dragon_q6a/   device tree (BoardConfig, device.mk, esp/, firmware/, prebuilt/)
+  apps/                       bundled applications: Lawnchair, ScreenRotate
+  health/                     health HAL for the battery-less board
+  idc/                        input device configuration
+docs/                         installation guide, technical reference, kernel/DT references
+prebuilts-radxa/              kernel modules, audio firmware, bootloader
+scripts/                      build helpers
 ```
 
-## Notes on the bring-up
+## Licence and attribution
 
-This port required solving a chain of QCS6490/GloDroid-specific issues, all
-documented in the boot logs and `docs/PROGRESS.md`:
+Repository contributions are licensed under **Apache-2.0** (see `LICENSE`). The prebuilt
+kernel and modules are **GPL-2.0** (RadxaOS); GPU, Wi-Fi and Bluetooth firmware are
+proprietary redistributable vendor blobs. The Lawnchair launcher is **GPL-3.0** and is
+fetched at build time rather than redistributed here. Full attribution and the kernel
+source offer are in `NOTICE`.
 
-- **FMQ / memfd** — kernel lacks `CONFIG_ASHMEM`; needs `sys.use_memfd=true`.
-- **fuse / netd / RescueParty loops** — `fuse.ko`, netfilter modules, and netd
-  `setGlobalAlert` made non-fatal (kernel lacks `xt_quota2`).
-- **Display** — `simpledrm` had to be blacklisted so the real msm DRM (`card0`)
-  is the one HWC composes onto.
-- **GPU firmware** — a660 SQE/GMU must be uncompressed in `/vendor/firmware`.
-- **WiFi** — GloDroid is intentionally no-vendor-HAL; the only gap was a build
-  flag (`GD_NO_DEFAULT_WIFI`) that dropped `wpa_supplicant`. The AIC fullmac
-  driver creates `wlan0` on demand. Firmware loads from `/metadata` (the driver
-  uses `filp_open`, so it must survive `switch_root`).
-- **Bluetooth** — same kernel-module pattern: `bluetooth.ko` + `aic_btusb_usb.ko`
-  in the ramdisk bring up `hci0`; the `btlinux` HAL then drives it. The
-  `RT_GROUP_SCHED` abort-loop is disarmed with `rt_group_sched=0`.
-- **Kernel modules are loaded fatally in first-stage init** — every module listed
-  in `modules.load` must also have a `modules.dep` entry, or init aborts and the
-  board reboot-loops before the kernel even reaches userspace UI. (This bit the
-  multitouch and Bluetooth bring-up; see `docs/FLASHING.md`/`docs/PROGRESS.md`.)
-
-## License & attribution
-
-Repository contributions: **Apache-2.0** (`LICENSE`). Prebuilt kernel/modules are
-**GPL-2.0** (RadxaOS); GPU and WiFi/BT firmware are proprietary-redistributable
-vendor blobs. The Lawnchair launcher is **GPL-3.0** (fetched at build time, not
-redistributed here). Full attribution and the kernel source offer are in `NOTICE`.
-
-This is an independent, unofficial project, not affiliated with or endorsed by
-Google, Radxa, Qualcomm, or AICSemi. "Android" is a trademark of Google LLC; this
-is an uncertified AOSP-based build and ships no Google apps.
+This is an independent, unofficial project and is not affiliated with or endorsed by
+Google, Radxa, Qualcomm or AICSemi. Android is a trademark of Google LLC. This is an
+uncertified AOSP build and ships no Google applications.

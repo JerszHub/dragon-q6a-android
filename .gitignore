@@ -1,7 +1,7 @@
-# Full SD card images (8 GB each) — too large for git; the ready-to-flash
-# community image ships as a GitHub Release asset (community_v1.img.zst).
+# Full system images — too large for git; they ship as Release assets.
 *.img.zst
-dragon_q6a_sd_*.img
+*.img.xz
+dragon_q6a_*.img
 userdata*.img
 metadata*.img
 super.img
@@ -16,7 +16,7 @@ out/
 *.o
 *.zip
 
-# Windows "Zone.Identifier" alternate-data-stream droppings (WSL)
+# Windows alternate-data-stream metadata
 *:Zone.Identifier
 *.Zone.Identifier
 

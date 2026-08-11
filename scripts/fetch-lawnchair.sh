@@ -6,7 +6,7 @@
 # The binary itself is NOT committed to this repository — Lawnchair is a
 # third-party GPL-3.0 application with its own trademark. This script downloads
 # the exact release used by the device tree and verifies its checksum. Run it
-# once before building (see "Build from source" in the README).
+# once before building (see "Building" in the README).
 #
 # Lawnchair source: https://github.com/LawnchairLauncher/lawnchair
 #

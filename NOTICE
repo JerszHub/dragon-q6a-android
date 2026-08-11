@@ -1,5 +1,5 @@
 dragon-q6a-android
-Android 13 (GloDroid / AOSP) device tree and bring-up resources for the
+Android 13 (GloDroid / AOSP) device tree and prebuilt resources for the
 Radxa Dragon Q6A (Qualcomm QCS6490).
 
 Copyright 2026 the dragon-q6a-android contributors.
@@ -41,6 +41,11 @@ and the BT/WiFi patch firmware)
 Qualcomm Adreno GPU firmware (firmware/a660_sqe.fw, a660_gmu.bin, a660_zap.mbn)
   Proprietary, redistributable GPU microcode. © Qualcomm Technologies, Inc.
 
+Qualcomm ADSP / audio firmware (prebuilts-radxa/firmware/qcom/qcs6490/...:
+adsp.mbn, cdsp.mbn, the .jsn manifests and the LPASS topology .tplg)
+  Proprietary, redistributable DSP firmware and audio topology. © Qualcomm
+  Technologies, Inc. Redistributed as shipped by RadxaOS for this board.
+
 Qualcomm UEFI / boot firmware references and BOOTAA64.EFI (systemd-boot)
   systemd-boot is part of systemd, LGPL-2.1-or-later.
   https://github.com/systemd/systemd
@@ -50,9 +55,6 @@ Lawnchair launcher (referenced by device/glodroid/dragon_q6a/apps/Lawnchair)
   repository — it is fetched at build time by scripts/fetch-lawnchair.sh from the
   upstream release. Source: https://github.com/LawnchairLauncher/lawnchair
   "Lawnchair" and its logo are trademarks of the Lawnchair project.
-
-Boot logs under boot-logs/ are verbatim kernel/init console output captured
-during bring-up and are provided for reference/debugging only.
 
 "Android" is a trademark of Google LLC. "Radxa" and "Dragon Q6A" are
 trademarks of their respective owners. "Qualcomm" and "Adreno" are

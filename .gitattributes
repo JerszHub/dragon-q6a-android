@@ -1,19 +1,14 @@
-# Prebuilt binaries are committed directly (each < GitHub's 100 MB hard limit):
+# Prebuilt binaries are committed directly (each below GitHub's 100 MB limit):
 #   device/glodroid/dragon_q6a/prebuilt/Image  (~61 MB)
 #   prebuilts-radxa/modules.tar.gz             (~45 MB)
-#   images/ramdisk_v35.img                     (~16 MB)
-# GitHub warns for files > 50 MB but accepts them. If this repo grows, these can
-# be migrated to Git LFS or GitHub Releases. The ready-to-flash SD image ships as
-# a Release asset, not in the tree (it exceeds the 100 MB limit).
+# Ready-to-flash system images ship as Release assets, not in the tree.
 
-# Treat these as binary (no EOL munging, no diff).
+# Treat these as binary (no EOL conversion, no diff).
 *.img    binary
 *.tar.gz binary
 *.mbn    binary
 *.bin    binary
 *.fw     binary
 *.EFI    binary
-
-# Boot logs are plain text.
-*.log      text
-*.log.clean text
+*.dtb    binary
+*.tplg   binary
