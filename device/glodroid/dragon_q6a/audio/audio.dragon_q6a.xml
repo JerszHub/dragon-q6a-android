@@ -53,7 +53,7 @@
                  doesn't fire, the primary use (headphones) still works. -->
             <ctl name="RX_CODEC_DMA_RX_0 Audio Mixer MultiMedia1" val="1" />
             <!-- Front-end playback gain (Q13, 8192 = 0 dB / unity). -->
-            <ctl name="stream0.vol_ctrl0 MultiMedia1 Playback Volume" val="8192" />
+            <ctl name="stream0.vol_ctrl0 MultiMedia1 Playback Volu" val="8192" />
         </init>
     </mixer>
 

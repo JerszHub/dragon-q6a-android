@@ -64,8 +64,17 @@ so an NVMe device is available before `/data` and `super` are mounted.
 
 **Display.** The DPU drives the DisplayPort controller and the onboard RA620 DP→HDMI
 bridge. `simpledrm` is blacklisted at boot so the msm DRM device is the one the
-hardware composer targets. HDMI mode selection is driven entirely by the connected
-display's EDID.
+hardware composer targets. HDMI mode selection is driven by the connected display's EDID:
+`drm_hwcomposer` takes the mode flagged `DRM_MODE_TYPE_PREFERRED`, and the kernel's
+`video=<connector>:WxH@R` parameter does not change that flag on this board. A boot entry
+can request a different mode with `androidboot.hwc.force_mode=WxH@R`, matched against the
+modes the connector reports; an unmatched request falls back to the preferred mode rather
+than blanking the output. Android's refresh rate policy is separate and still caps at
+60 Hz unless `peak_refresh_rate` is raised.
+
+Hot-plug detection does not work on this board, so the connector is force-enabled from
+the command line (`video=HDMI-A-1:e`). Asking the driver to re-detect — writing `detect`
+to the connector's `status` attribute — drops the link until the next reboot.
 
 **GPU.** Adreno 643. The a660 SQE and GMU firmware must be present uncompressed under
 `/vendor/firmware`, with `firmware_class.path` pointing at it.
@@ -75,6 +84,26 @@ loaded in dependency order, the board topology binary, and a tinyalsa HAL config
 describing the output devices. ALSA card 0 (`QCS6490-Radxa-Dragon-Q6A`) carries HDMI and
 the analog jack; routing between headphone, HDMI and Bluetooth outputs is exclusive and
 follows connection state. Bluetooth A2DP uses its own HAL.
+
+The card finishes binding asynchronously, several seconds after the module `insmod`s
+return, while `audioserver` and the vendor audio HAL belong to init classes that start
+earlier. If the HAL opens the card before it exists, `adev_open` fails,
+`AudioPolicyManager` is left null and nothing ever retries — audio stays dead for the
+rest of the session, with `getOutputForAttr() return error -19` filling the log. The
+module load sequence therefore waits for `/dev/snd/controlC0` before init continues,
+which orders the card ahead of the `hal` and `core` classes.
+
+Two further constraints are worth recording. ALSA truncates mixer control names at 44
+characters, so a longer name in the HAL configuration refers to a control that does not
+exist, and the whole configuration then fails to parse. And `AUX_DIGITAL` is listed as an
+attached device unconditionally: this kernel exposes neither the legacy
+`switch/hdmi_audio` uevent nor a jack event that `WiredAccessoryManager` maps to HDMI, so
+nothing would otherwise tell Android that an HDMI sink exists.
+
+**Headset detection.** The WCD938x MBHC reports `SW_HEADPHONE_INSERT`,
+`SW_MICROPHONE_INSERT` and `SW_LINEOUT_INSERT` simultaneously for some headsets. Stock
+AOSP's `WiredAccessoryManager` has no case for that combination and falls through to
+"nothing connected"; all eight combinations of the three switches are handled here.
 
 **Wi-Fi.** The onboard AIC8800D80 is a USB fullmac device driven by `wpa_supplicant`
 and `wificond` with no vendor HAL. Its firmware is loaded through `filp_open`, so it must

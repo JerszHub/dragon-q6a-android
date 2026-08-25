@@ -1,0 +1,18 @@
+--- a/device/glodroid/common/audio/audio_policy_configuration.xml
++++ b/device/glodroid/common/audio/audio_policy_configuration.xml
+@@ -24,6 +24,15 @@
+             <attachedDevices>
+                 <item>Speaker</item>
+                 <item>Built-In Mic</item>
++                <!-- Aux Digital (HDMI/DP) unconditionally: this kernel exposes
++                     neither the legacy switch/hdmi_audio uevent nor a "DP0 Jack"
++                     input event that WiredAccessoryManager maps to HDMI, so it
++                     never reports a connection (log: "This kernel does not have
++                     HDMI audio support"). Without this entry Aux Digital NEVER
++                     APPEARS in the output list, even though the sink's ELD is
++                     read correctly and the DP path does carry audio (measured on
++                     hardware 2026-08-23). -->
++                <item>Aux Digital</item>
+             </attachedDevices>
+             <defaultOutputDevice>Speaker</defaultOutputDevice>
+             <mixPorts>

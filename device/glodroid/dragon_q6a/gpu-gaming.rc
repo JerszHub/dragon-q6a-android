@@ -1,0 +1,34 @@
+# Pin the GPU (Adreno 643) to its highest OPP, 812 MHz.
+#
+# The default devfreq governor `simple_ondemand` keeps the GPU at 315 MHz when
+# idle and only ramps up under load. Measured on hardware 2026-08-11 from
+# trans_stat: 803,320 ms spent at 315 MHz against 25,803 ms at 812 MHz, and the
+# intermediate steps (450/550/608 MHz) were never used at all. Pinning removes
+# the ramp-up delay at the start of every load.
+#
+# Why `userspace` rather than `min_freq`:
+# android.hardware.power-service.glodroid (device/glodroid/hals/power,
+# GloDroidPower.h) scans /sys/devices/platform and /sys/devices/system, treats
+# every min_freq file it finds as a "DVFS booster", and restores the initial
+# value through DevFreq::Boost() once a boost expires. Any min_freq pin is
+# therefore erased within a minute or so — verified. Under the `userspace`
+# governor the frequency is owned by set_freq, so the power HAL's writes to
+# min_freq have no effect and this pin holds.
+#
+# Order matters: the userspace/ directory only appears once the governor has
+# been set, hence the two writes in sequence.
+#
+# Triggered on sys.boot_completed rather than `on boot`: pinning the GPU during
+# start-up gains nothing, and waiting guarantees the devfreq node exists.
+#
+# Cost: the GPU also sits at 812 MHz while idle. Measured idle temperature with
+# this setting is 36-38 °C against a 90 °C CPU trip point, so thermally it is
+# irrelevant, but power draw is higher. To disable at runtime:
+#   echo simple_ondemand > /sys/class/devfreq/3d00000.gpu/governor
+#
+# The CPU is deliberately left alone: a run of n=12 showed no difference in
+# median frame time between the performance and schedutil governors (127.5 vs
+# 126.0 ms).
+on property:sys.boot_completed=1
+    write /sys/class/devfreq/3d00000.gpu/governor userspace
+    write /sys/class/devfreq/3d00000.gpu/userspace/set_freq 812000000

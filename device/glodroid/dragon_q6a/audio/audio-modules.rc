@@ -49,3 +49,15 @@ on post-fs
     insmod /vendor/lib/audio-modules/q6prm.ko
     insmod /vendor/lib/audio-modules/q6prm-clocks.ko
     insmod /vendor/lib/audio-modules/qrtr-smd.ko
+
+    # The ALSA card finishes binding ASYNCHRONOUSLY, after insmod has already
+    # returned (measured: ~8.7 s, "snd-sc8280xp sound: ASoC: Parent card not yet
+    # available, widget card binding deferred"). Meanwhile audioserver (class
+    # core) and vendor.audio-hal (class hal) start earlier, tinyhal tries to open
+    # card 0 before it exists, adev_open fails -> loadHwModule("primary") fails
+    # -> AudioPolicyManager stays NULL for the rest of the session (nothing ever
+    # retries). Symptom: no audio at all and a flood of
+    # "getOutputForAttr() return error -19".
+    # Measured 2026-08-23: `setprop ctl.restart audioserver` after boot fixes
+    # audio immediately, which proves this is purely a race.
+    wait /dev/snd/controlC0 15

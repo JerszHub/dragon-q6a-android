@@ -1,0 +1,35 @@
+diff --git a/services/core/java/com/android/server/WiredAccessoryManager.java b/services/core/java/com/android/server/WiredAccessoryManager.java
+index b271d7ec..895b2833 100644
+--- a/services/core/java/com/android/server/WiredAccessoryManager.java
++++ b/services/core/java/com/android/server/WiredAccessoryManager.java
+@@ -167,6 +167,30 @@ final class WiredAccessoryManager implements WiredAccessoryCallbacks {
+                     headset = BIT_HEADSET;
+                     break;
+ 
++                // Radxa Dragon Q6A: the WCD938x codec (MBHC) reports
++                // SW_LINEOUT_INSERT TOGETHER WITH SW_HEADPHONE_INSERT and
++                // SW_MICROPHONE_INSERT — detection is impedance based and for some
++                // headsets sets all three bits at once (measured: SwitchValues=84
++                // = 0x54, reproducible on every insertion). Stock AOSP has no case
++                // for that combination, so it fell through to default: headset = 0,
++                // i.e. "nothing plugged in" — headphones NEVER APPEARED in the
++                // output list even though the switch reacted correctly.
++                // Since SW_HEADPHONE_INSERT is set, something IS in the jack; the
++                // extra LINEOUT bit is treated as an MBHC artefact and ignored.
++                case SW_HEADPHONE_INSERT_BIT | SW_MICROPHONE_INSERT_BIT | SW_LINEOUT_INSERT_BIT:
++                    headset = BIT_HEADSET;
++                    break;
++
++                case SW_HEADPHONE_INSERT_BIT | SW_LINEOUT_INSERT_BIT:
++                    headset = BIT_HEADSET_NO_MIC;
++                    break;
++
++                case SW_MICROPHONE_INSERT_BIT | SW_LINEOUT_INSERT_BIT:
++                    headset = BIT_HEADSET;
++                    break;
++
++                // All eight combinations of the three bits are now handled
++                // explicitly, so default is unreachable; it is kept for safety.
+                 default:
+                     headset = 0;
+                     break;

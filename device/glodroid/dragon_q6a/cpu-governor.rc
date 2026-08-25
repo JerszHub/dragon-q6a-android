@@ -1,0 +1,36 @@
+# Switch every cpufreq policy to schedutil.
+#
+# The kernel is built with CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y, so without
+# this file all three policies come up on `ondemand` with up_threshold=95.
+#
+# Measured on hardware (2026-08-11, cpu7 via `taskset 80`): for sustained
+# throughput schedutil makes no difference (1053-1082 ms on ondemand against
+# 1054-1077 ms on schedutil), and on short bursts it gains roughly 6% with a
+# narrower spread (134 -> 126 ms on average). The real reason for the change is
+# different: the energy model only registers under schedutil
+# (/sys/kernel/debug/energy_model/ then lists cpu0, cpu4, cpu7), which is what
+# makes EAS place tasks between the A55 and A78 clusters. `ondemand` predates
+# EAS and has no notion of clusters on its own.
+#
+# schedutil/rate_limit_us is left alone; the 1000 us default is responsive
+# enough.
+#
+# Policy names map to clusters: policy0 = cpu0-3 (A55, up to 1.958 GHz),
+# policy4 = cpu4-6 (A78, up to 2.4 GHz), policy7 = cpu7 (A78 prime, up to
+# 2.707 GHz). `write` does not expand globs, hence three explicit entries.
+#
+# ARM_QCOM_CPUFREQ_HW=y is built in rather than a module, so the policies
+# already exist at `on boot` — no waiting for insmod as in audio-modules.rc.
+on boot
+    write /sys/devices/system/cpu/cpufreq/policy0/scaling_governor schedutil
+    write /sys/devices/system/cpu/cpufreq/policy4/scaling_governor schedutil
+    write /sys/devices/system/cpu/cpufreq/policy7/scaling_governor schedutil
+
+# Repeated after boot completes. The write is idempotent; this guards against
+# anything later in start-up putting the governor back. (This port has no power
+# HAL that would normally manage it, but that could not be ruled out without
+# building an image.)
+on property:sys.boot_completed=1
+    write /sys/devices/system/cpu/cpufreq/policy0/scaling_governor schedutil
+    write /sys/devices/system/cpu/cpufreq/policy4/scaling_governor schedutil
+    write /sys/devices/system/cpu/cpufreq/policy7/scaling_governor schedutil

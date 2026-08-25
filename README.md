@@ -34,7 +34,12 @@ onboard SPI firmware and eMMC are not modified.
 **Display and input**
 
 - HDMI output at the connected display's native mode, configured from its EDID
-- MIPI-DSI support for the Radxa Display 8HD (Jadard JD9365DA-H3 + Goodix GT911 touch)
+- Display mode overridable per boot entry with `androidboot.hwc.force_mode=WxH@R`, for
+  screens whose preferred mode is not the one you want
+- MIPI-DSI support for the Radxa Display 8HD (Jadard JD9365DA-H3 + Goodix GT911 touch).
+  The panel has been confirmed to light up; touch has not been confirmed by anyone. A
+  second boot entry declaring the touch controller at an alternate I²C address ships for
+  testing — see [docs/FLASHING.md](docs/FLASHING.md#display-selection)
 - USB touchscreens, including multitouch up to 5 points
 - Manual display rotation through a Quick Settings tile (the board has no accelerometer)
 - Adaptive navigation: a 3-button navigation bar on small displays, the system taskbar on large ones
@@ -52,9 +57,18 @@ onboard SPI firmware and eMMC are not modified.
 **Audio**
 
 - HDMI/DisplayPort output through the QCS6490 LPASS/AudioReach pipeline
-- 3.5 mm analog stereo output
-- Bluetooth A2DP
-- Automatic routing between outputs as devices are connected and disconnected
+- 3.5 mm analog stereo output, with headset detection
+- Bluetooth A2DP — SBC, AAC and LDAC. aptX and aptX HD are proprietary and cannot be
+  shipped; which codec is used depends on the connected headphones
+- Automatic routing between outputs as devices are connected and disconnected, including
+  handover between HDMI and the headphone jack while audio is playing
+
+**Performance**
+
+- All cpufreq policies set to `schedutil`, which is what registers the energy model and
+  lets the scheduler place tasks across the A55 and A78 clusters
+- GPU pinned to its top operating point (812 MHz), removing the devfreq ramp-up delay at
+  the start of every load. Reversible at runtime — see `gpu-gaming.rc`
 
 **System**
 
@@ -79,8 +93,8 @@ or NVMe SSD. Full instructions, including NVMe installation and Google applicati
 are in **[docs/FLASHING.md](docs/FLASHING.md)**.
 
 ```bash
-zstd -d dragon_q6a_universal-v6.img.zst -o dragon_q6a_universal-v6.img
-sudo dd if=dragon_q6a_universal-v6.img of=/dev/sdX bs=4M conv=fsync status=progress
+zstd -d dragon_q6a_universal-v7.img.zst -o dragon_q6a_universal-v7.img
+sudo dd if=dragon_q6a_universal-v7.img of=/dev/sdX bs=4M conv=fsync status=progress
 sync
 ```
 
@@ -95,6 +109,9 @@ The device tree builds inside a GloDroid (Android 13) checkout:
 # from a synced GloDroid tree
 cp -r device/glodroid/dragon_q6a <glodroid>/device/glodroid/
 
+# apply the fixes that live outside the device tree (see patches/README.md)
+scripts/apply-patches.sh <glodroid>
+
 # fetch the Lawnchair launcher (third-party, not redistributed here)
 scripts/fetch-lawnchair.sh
 
@@ -105,6 +122,12 @@ make droid
 # assemble the flashable image
 device/glodroid/dragon_q6a/gensdimg-uefi.sh
 ```
+
+Three of the fixes in this release cannot live in the device tree, because they change
+files owned by GloDroid or AOSP: the audio policy configuration, `WiredAccessoryManager`
+in `frameworks/base`, and `drm_hwcomposer`. They are kept as patches under `patches/` and
+applied by the script above. **Skipping that step produces a build without HDMI in the
+audio output list, without headphone jack detection, and without display mode forcing.**
 
 The kernel is the RadxaOS prebuilt `6.18.2-4-qcom` and is not rebuilt: `prebuilt/Image`
 and `prebuilts-radxa/modules.tar.gz` are committed directly. See `NOTICE` for the

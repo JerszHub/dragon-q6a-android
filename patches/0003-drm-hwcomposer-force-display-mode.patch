@@ -1,0 +1,109 @@
+--- a/hwc2_device/HwcDisplay.h
++++ b/hwc2_device/HwcDisplay.h
+@@ -110,6 +110,9 @@
+   HWC2::Error PresentDisplay(int32_t *out_present_fence);
+   HWC2::Error SetActiveConfig(hwc2_config_t config);
+   HWC2::Error ChosePreferredConfig();
++  // Returns the config_id of the mode requested through hwc.force_mode, or the
++  // preferred mode when the property is empty, malformed or unavailable.
++  uint32_t ChoseForcedOrPreferredConfig();
+   HWC2::Error SetClientTarget(buffer_handle_t target, int32_t acquire_fence,
+                               int32_t dataspace, hwc_region_t damage);
+   HWC2::Error SetColorMode(int32_t mode);
+--- a/hwc2_device/HwcDisplay.cpp
++++ b/hwc2_device/HwcDisplay.cpp
+@@ -19,6 +19,9 @@
+ 
+ #include "HwcDisplay.h"
+ 
++#include <cmath>
++#include <cstdio>
++
+ #include "DrmHwcTwo.h"
+ #include "backend/Backend.h"
+ #include "backend/BackendManager.h"
+@@ -209,7 +212,83 @@
+     return HWC2::Error::BadDisplay;
+   }
+ 
+-  return SetActiveConfig(configs_.preferred_config_id);
++  return SetActiveConfig(ChoseForcedOrPreferredConfig());
++}
++
++/*
++ * Radxa Dragon Q6A / GloDroid: allows the display mode to be FORCED.
++ *
++ * By default the mode flagged DRM_MODE_TYPE_PREFERRED is used (usually the
++ * native mode from EDID). On USB-C->HDMI adapters that is often 1080p60 even
++ * though the panel can do a higher refresh rate at a lower resolution — and the
++ * kernel parameter `video=<conn>:WxH@R` does NOT help, because the driver does
++ * not flag that mode as preferred (measured on QCS6490, 2026-08-24: the command
++ * line was passed through, the connector's mode list was unchanged).
++ *
++ * Sources for the value, in order:
++ *   1) vendor.hwc.drm.force_mode   — for testing (setprop + restart hwcomposer)
++ *   2) ro.boot.hwc.force_mode      — from the command line
++ *                                    (androidboot.hwc.force_mode=...), so EVERY
++ *                                    bootloader entry can request its own mode
++ * Format: "WxH" or "WxH@R", e.g. "1280x768@120".
++ *
++ * Only modes the connector itself reports are considered — timings are never
++ * invented, so this cannot blank the display through an incompatible mode. If
++ * nothing matches, the preferred mode is kept.
++ */
++uint32_t HwcDisplay::ChoseForcedOrPreferredConfig() {
++  const uint32_t preferred = configs_.preferred_config_id;
++  if (IsInHeadlessMode()) {
++    return preferred;
++  }
++
++  char forced[PROPERTY_VALUE_MAX] = {};
++  if (property_get("vendor.hwc.drm.force_mode", forced, "") <= 0) {
++    property_get("ro.boot.hwc.force_mode", forced, "");
++  }
++  if (forced[0] == '\0') {
++    return preferred;
++  }
++
++  unsigned int want_w = 0;
++  unsigned int want_h = 0;
++  float want_r = 0.0F;
++  // NOLINTNEXTLINE(cert-err34-c)
++  const int parsed = sscanf(forced, "%ux%u@%f", &want_w, &want_h, &want_r);
++  if (parsed < 2 || want_w == 0 || want_h == 0) {
++    ALOGW("hwc.force_mode: cannot parse '%s' (expected WxH or WxH@R)",
++          forced);
++    return preferred;
++  }
++
++  uint32_t best_id = 0;
++  float best_diff = 0.0F;
++  for (const auto &[id, cfg] : configs_.hwc_configs) {
++    if (cfg.disabled) {
++      continue;
++    }
++    const auto &raw = cfg.mode.GetRawMode();
++    if (raw.hdisplay != want_w || raw.vdisplay != want_h) {
++      continue;
++    }
++    const float diff = (parsed >= 3)
++                           ? std::fabs(cfg.mode.GetVRefresh() - want_r)
++                           : 0.0F;
++    if (best_id == 0 || diff < best_diff) {
++      best_id = id;
++      best_diff = diff;
++    }
++  }
++
++  // 1.5 Hz of slack: EDID reports e.g. 119.80 Hz for a requested 120.
++  if (best_id != 0 && (parsed < 3 || best_diff <= 1.5F)) {
++    ALOGI("hwc.force_mode: '%s' -> mode %s (config %u)", forced,
++          configs_.hwc_configs[best_id].mode.GetName().c_str(), best_id);
++    return best_id;
++  }
++
++  ALOGW("hwc.force_mode: '%s' unavailable, keeping the preferred mode", forced);
++  return preferred;
+ }
+ 
+ HWC2::Error HwcDisplay::AcceptDisplayChanges() {

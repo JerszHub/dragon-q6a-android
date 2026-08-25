@@ -187,6 +187,7 @@ PRODUCT_COPY_FILES += \
 # touch.deviceType=touchScreen -> DIRECT mode, real absolute touch.
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/idc/Vendor_0eef_Product_0005.idc:$(TARGET_COPY_OUT_VENDOR)/usr/idc/Vendor_0eef_Product_0005.idc \
+    $(LOCAL_PATH)/idc/Goodix_Capacitive_TouchScreen.idc:$(TARGET_COPY_OUT_VENDOR)/usr/idc/Goodix_Capacitive_TouchScreen.idc \
 
 # adb over TCP — the only adb path on this board: both USB controllers are
 # host-only (no peripheral/gadget mode), so adb-by-cable is physically
@@ -206,6 +207,20 @@ PRODUCT_PACKAGES += \
 
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/lawnchair-default-home.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/lawnchair-default-home.rc \
+
+# --- CPU scheduling (2026-08-11) ---
+
+# Force schedutil on all three cpufreq policies. The kernel defaults to ondemand
+# (CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y), which predates EAS. Measurements and
+# rationale are in the .rc file itself.
+PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/cpu-governor.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/cpu-governor.rc \
+
+# Pin the GPU to its highest OPP (812 MHz) through the `userspace` governor. It
+# has to be userspace rather than min_freq: the power HAL erases every write to
+# min_freq. Rationale and measurements are in the .rc file itself.
+PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/gpu-gaming.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/gpu-gaming.rc \
 
 # Health HAL — the Q6A is a wall-powered SBC with no battery, so the stock
 # example service reports 0%. This service subclasses it to report full AC power
