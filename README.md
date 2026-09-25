@@ -1,3 +1,17 @@
+# ⚠️ This port is discontinued
+
+## → Use [LineageOS 24 (Android 17) for the Dragon Q6A](https://github.com/JerszHub/dragon-q6a-lineageos) instead
+
+> [!IMPORTANT]
+> Development moved to a **mainline kernel** and LineageOS 24. The new port already does
+> everything this one did — display, GPU, Ethernet, Wi-Fi, Bluetooth, analog audio — plus
+> persistent `/data`, and it boots in about a third of the time.
+>
+> This repository stays up so the Android 13 images and the notes behind them remain
+> available, but it will not receive further work.
+
+---
+
 # Android 13 for the Radxa Dragon Q6A
 
 An AOSP-based **Android 13** distribution for the **Radxa Dragon Q6A** (Qualcomm
